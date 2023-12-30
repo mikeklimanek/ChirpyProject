@@ -10,14 +10,14 @@ func main() {
 	const port = "8080"
 
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.Dir(filepathRoot)))
+	mux.Handle("/healthz", http.HandlerFunc(healthzHandler))
+	mux.Handle("/app/", http.StripPrefix("/app/", http.FileServer(http.Dir(filepathRoot)))) 
 	corsMux := middlewareCors(mux)
 
 	srv := &http.Server{
-		Addr:    ":" + port,
+		Addr:   ":" + port,
 		Handler: corsMux,
 	}
-
 
 	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 	log.Fatal(srv.ListenAndServe())
@@ -36,3 +36,13 @@ func middlewareCors(next http.Handler) http.Handler {
 	})
 }
 
+func healthzHandler(w http.ResponseWriter, r *http.Request) {
+	// HEADER
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
+	// STATUS
+	w.WriteHeader(http.StatusOK)
+
+	// BODY
+	w.Write([]byte("OK"))
+}
