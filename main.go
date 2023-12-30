@@ -6,14 +6,21 @@ import (
 )
 
 func main() {
-	fs := http.FileServer(http.Dir("."))
-	http.Handle("/", fs)
+	const filepathRoot = "."
+	const port = "8080"
 
-	log.Println("Starting server at http://localhost:8080")
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
-		log.Fatal(err)
+	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(http.Dir(filepathRoot)))
+	corsMux := middlewareCors(mux)
+
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: corsMux,
 	}
+
+
+	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
+	log.Fatal(srv.ListenAndServe())
 }
 
 func middlewareCors(next http.Handler) http.Handler {
@@ -28,3 +35,4 @@ func middlewareCors(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
