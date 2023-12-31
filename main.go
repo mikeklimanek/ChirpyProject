@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"github.com/go-chi/chi"
 )
 
 type apiConfig struct {
@@ -15,21 +16,30 @@ func main() {
 	const port = "8080"
 
 	apiCfg := &apiConfig{}
-	mux := http.NewServeMux()
-	mux.Handle("/healthz", http.HandlerFunc(healthzHandler))
-	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app/", http.FileServer(http.Dir(filepathRoot)))))
-	mux.Handle("/metrics", http.HandlerFunc(apiCfg.metricsHandler))
-	mux.Handle("/reset", http.HandlerFunc(apiCfg.resetHandler))
-	corsMux := middlewareCors(mux)
+	r := chi.NewRouter()
+
+	apiRouter := chi.NewRouter()
+	apiRouter.Get("/healthz", http.HandlerFunc(healthzHandler))
+	apiRouter.Get("/metrics", http.HandlerFunc(apiCfg.metricsHandler))
+	apiRouter.Get("/reset", http.HandlerFunc(apiCfg.resetHandler))
+	r.Mount("/api", apiRouter)
+
+	fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
+	r.Handle("/app/*", fsHandler)
+	r.Handle("/app", fsHandler)
+
+	corsMux := middlewareCors(r)
 
 	srv := &http.Server{
-		Addr:  ":" + port,
+		Addr: ":" + port,
 		Handler: corsMux,
 	}
 
 	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 	log.Fatal(srv.ListenAndServe())
 }
+
+
 
 func middlewareCors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
