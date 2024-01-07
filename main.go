@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-chi/chi"
 	"log"
 	"net/http"
 	"strconv"
-	"github.com/go-chi/chi"
 )
 
 type apiConfig struct {
@@ -42,7 +42,7 @@ func main() {
 	corsMux := middlewareCors(r)
 
 	srv := &http.Server{
-		Addr: ":" + port,
+		Addr:    ":" + port,
 		Handler: corsMux,
 	}
 
@@ -56,7 +56,6 @@ func (cfg *apiConfig) metricsHTMLHandler(w http.ResponseWriter, r *http.Request)
 	htmlTemplate := `<html><body><h1>Welcome, Chirpy Admin</h1><p>Chirpy has been visited %d times!</p></body></html>`
 	w.Write([]byte(fmt.Sprintf(htmlTemplate, cfg.fileserverHits)))
 }
-
 
 func middlewareCors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
