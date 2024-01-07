@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +11,10 @@ import (
 
 type apiConfig struct {
 	fileserverHits int
+}
+
+type Chirp struct {
+	Body string `json:"body"`
 }
 
 func main() {
@@ -23,6 +28,7 @@ func main() {
 	apiRouter.Get("/healthz", http.HandlerFunc(healthzHandler))
 	apiRouter.Get("/metrics", http.HandlerFunc(apiCfg.metricsHandler))
 	apiRouter.Get("/reset", http.HandlerFunc(apiCfg.resetHandler))
+	apiRouter.Post("/validate_chirp", http.HandlerFunc(validateChirpHandler))
 	r.Mount("/api", apiRouter)
 
 	adminRouter := chi.NewRouter()
@@ -63,6 +69,29 @@ func middlewareCors(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var chirp Chirp
+	err := json.NewDecoder(r.Body).Decode(&chirp)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if len(chirp.Body) > 140 {
+		http.Error(w, `{"error": "Chirp is too long"}`, http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"valid":true}`))
 }
 
 func healthzHandler(w http.ResponseWriter, r *http.Request) {
