@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -24,6 +25,10 @@ func main() {
 	apiRouter.Get("/reset", http.HandlerFunc(apiCfg.resetHandler))
 	r.Mount("/api", apiRouter)
 
+	adminRouter := chi.NewRouter()
+	adminRouter.Get("/metrics", http.HandlerFunc(apiCfg.metricsHTMLHandler))
+	r.Mount("/admin", adminRouter)
+
 	fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
 	r.Handle("/app/*", fsHandler)
 	r.Handle("/app", fsHandler)
@@ -39,6 +44,12 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
+func (cfg *apiConfig) metricsHTMLHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	htmlTemplate := `<html><body><h1>Welcome, Chirpy Admin</h1><p>Chirpy has been visited %d times!</p></body></html>`
+	w.Write([]byte(fmt.Sprintf(htmlTemplate, cfg.fileserverHits)))
+}
 
 
 func middlewareCors(next http.Handler) http.Handler {
