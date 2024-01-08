@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type apiConfig struct {
@@ -70,6 +71,16 @@ func middlewareCors(next http.Handler) http.Handler {
 	})
 }
 
+func cleanChirp(chirp string) string {
+	profanities := []string{"kerfuffle", "sharbert", "fornax"}
+	for _, profanity := range profanities {
+		chirp = strings.Replace(chirp, profanity, "****", -1)
+		chirp = strings.Replace(chirp, strings.Title(profanity), "****", -1)
+
+	}
+	return chirp
+}
+
 func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -88,9 +99,11 @@ func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cleanedChirp := cleanChirp(chirp.Body)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"valid":true}`))
+	w.Write([]byte(`{"cleaned_body": "` + cleanedChirp + `"}`))
 }
 
 func healthzHandler(w http.ResponseWriter, r *http.Request) {
