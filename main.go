@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi"
@@ -15,8 +16,11 @@ type apiConfig struct {
 }
 
 type Chirp struct {
+	ID   int    `json:"id"`
 	Body string `json:"body"`
 }
+
+var lastID int
 
 func main() {
 	const filepathRoot = "."
@@ -29,7 +33,7 @@ func main() {
 	apiRouter.Get("/healthz", http.HandlerFunc(healthzHandler))
 	apiRouter.Get("/metrics", http.HandlerFunc(apiCfg.metricsHandler))
 	apiRouter.Get("/reset", http.HandlerFunc(apiCfg.resetHandler))
-	apiRouter.Post("/validate_chirp", http.HandlerFunc(validateChirpHandler))
+	apiRouter.Post("/chirps", http.HandlerFunc(validateChirpHandler))
 	r.Mount("/api", apiRouter)
 
 	adminRouter := chi.NewRouter()
@@ -100,10 +104,25 @@ func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cleanedChirp := cleanChirp(chirp.Body)
+	chirp.Body = cleanedChirp
+
+	lastID++
+	chirp.ID = lastID
+
+	data, err := json.Marshal(chirp)
+	if err != nil {
+		http.Error(w, "Failed to marshal chirp", http.StatusInternalServerError)
+		return
+	}
+	err = os.WriteFile(fmt.Sprintf("chirps/%d.txt", chirp.ID), data, 0644)
+	if err != nil {
+		http.Error(w, "Failed to save chirp", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"cleaned_body": "` + cleanedChirp + `"}`))
+	w.WriteHeader(http.StatusCreated)
+	w.Write(data)
 }
 
 func healthzHandler(w http.ResponseWriter, r *http.Request) {
