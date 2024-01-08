@@ -10,4 +10,5 @@
 9) Architecture
 10) admin metric check
 11) JSON GET/POST logic
-12) *Coming Soon* Storage
+12) Storage
+13) ...

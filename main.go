@@ -1,50 +1,55 @@
 package main
 
 import (
-	"os"
-	"encoding/json"
-	"fmt"
-	"github.com/go-chi/chi"
+	"github.com/dthxsu/Chirpy/ChirpyProject/internal/database"
+	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
-	"strconv"
-	"strings"
+	"path/filepath"
 )
 
 type apiConfig struct {
 	fileserverHits int
+	DB             *database.DB
 }
-
-type Chirp struct {
-	ID   int    `json:"id"`
-	Body string `json:"body"`
-}
-
-var lastID int
 
 func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
-	apiCfg := &apiConfig{}
-	r := chi.NewRouter()
+	dbPath, err := filepath.Abs(filepath.Join(filepathRoot, "internal", "database", "database.json"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Initialize the database
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	apiCfg := apiConfig{
+		fileserverHits: 0,
+		DB:             db,
+	}
+
+	router := chi.NewRouter()
+	fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
+	router.Handle("/app", fsHandler)
+	router.Handle("/app/*", fsHandler)
 
 	apiRouter := chi.NewRouter()
-	apiRouter.Get("/healthz", http.HandlerFunc(healthzHandler))
-	apiRouter.Get("/metrics", http.HandlerFunc(apiCfg.metricsHandler))
-	apiRouter.Get("/reset", http.HandlerFunc(apiCfg.resetHandler))
-	apiRouter.Post("/chirps", http.HandlerFunc(validateChirpHandler))
-	r.Mount("/api", apiRouter)
+	apiRouter.Get("/healthz", handlerReadiness)
+	apiRouter.Get("/reset", apiCfg.handlerReset)
+	apiRouter.Post("/chirps", apiCfg.handlerChirpsCreate)
+	apiRouter.Get("/chirps", apiCfg.handlerChirpsRetrieve)
+	router.Mount("/api", apiRouter)
 
 	adminRouter := chi.NewRouter()
-	adminRouter.Get("/metrics", http.HandlerFunc(apiCfg.metricsHTMLHandler))
-	r.Mount("/admin", adminRouter)
+	adminRouter.Get("/metrics", apiCfg.handlerMetrics)
+	router.Mount("/admin", adminRouter)
 
-	fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
-	r.Handle("/app/*", fsHandler)
-	r.Handle("/app", fsHandler)
-
-	corsMux := middlewareCors(r)
+	corsMux := middlewareCors(router)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
@@ -53,98 +58,4 @@ func main() {
 
 	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 	log.Fatal(srv.ListenAndServe())
-}
-
-func (cfg *apiConfig) metricsHTMLHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	htmlTemplate := `<html><body><h1>Welcome, Chirpy Admin</h1><p>Chirpy has been visited %d times!</p></body></html>`
-	w.Write([]byte(fmt.Sprintf(htmlTemplate, cfg.fileserverHits)))
-}
-
-func middlewareCors(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
-		w.Header().Set("Access-Control-Allow-Headers", "*")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func cleanChirp(chirp string) string {
-	profanities := []string{"kerfuffle", "sharbert", "fornax"}
-	for _, profanity := range profanities {
-		chirp = strings.Replace(chirp, profanity, "****", -1)
-		chirp = strings.Replace(chirp, strings.Title(profanity), "****", -1)
-
-	}
-	return chirp
-}
-
-func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var chirp Chirp
-	err := json.NewDecoder(r.Body).Decode(&chirp)
-	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	if len(chirp.Body) > 140 {
-		http.Error(w, `{"error": "Chirp is too long"}`, http.StatusBadRequest)
-		return
-	}
-
-	cleanedChirp := cleanChirp(chirp.Body)
-	chirp.Body = cleanedChirp
-
-	lastID++
-	chirp.ID = lastID
-
-	data, err := json.Marshal(chirp)
-	if err != nil {
-		http.Error(w, "Failed to marshal chirp", http.StatusInternalServerError)
-		return
-	}
-	err = os.WriteFile(fmt.Sprintf("chirps/%d.txt", chirp.ID), data, 0644)
-	if err != nil {
-		http.Error(w, "Failed to save chirp", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	w.Write(data)
-}
-
-func healthzHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
-}
-
-func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cfg.fileserverHits++
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (cfg *apiConfig) metricsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hits: " + strconv.Itoa(cfg.fileserverHits)))
-}
-
-func (cfg *apiConfig) resetHandler(w http.ResponseWriter, r *http.Request) {
-	cfg.fileserverHits = 0
-	w.WriteHeader(http.StatusOK)
 }
