@@ -1,0 +1,5 @@
+  steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'europe-central2-docker.pkg.dev/notely-410700/notely-ar-repo/chirpyproject:latest', '.']
+  images:
+  - 'europe-central2-docker.pkg.dev/notely-410700/notely-ar-repo/chirpyproject:latest'
