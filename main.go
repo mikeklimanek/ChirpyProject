@@ -13,6 +13,11 @@ type apiConfig struct {
 	DB             *database.DB
 }
 
+type User struct {
+	ID   int    `json:"id"`
+	Email string `json:"email"`
+}
+
 func main() {
 	const filepathRoot = "."
 	const port = "8080"
@@ -44,6 +49,7 @@ func main() {
 	apiRouter.Post("/chirps", apiCfg.handlerChirpsCreate)
 	apiRouter.Get("/chirps", apiCfg.handlerChirpsRetrieve)
 	apiRouter.Get("/chirps/{id}", apiCfg.handlerChirpRetrieveByID)
+	apiRouter.Post("/users", apiCfg.handlerUsersCreate)
 	router.Mount("/api", apiRouter)
 
 	adminRouter := chi.NewRouter()
