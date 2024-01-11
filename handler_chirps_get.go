@@ -1,17 +1,13 @@
 package main
 
 import (
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"sort"
+	"strconv"
 )
 
 func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Request) {
-	chirpID := chi.URLParam(r, "chirpID")
-	chirp, err := cfg.DB.GetChirp(chirpID)
-	if err != nil {
-		http.Error(w, http.StatusTest(404), 404)
-	}
-
 	dbChirps, err := cfg.DB.GetChirps()
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps")
@@ -31,4 +27,22 @@ func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Reque
 	})
 
 	respondWithJSON(w, http.StatusOK, chirps)
+}
+
+func (cfg *apiConfig) handlerChirpRetrieveByID(w http.ResponseWriter, r *http.Request) {
+	chirpID := chi.URLParam(r, "id")
+	chirpIDInt, err := strconv.Atoi(chirpID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid chirp ID")
+		return
+	}
+	chirp, err := cfg.DB.GetChirp(chirpIDInt)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Chirp not found")
+		return
+	}
+	respondWithJSON(w, http.StatusOK, Chirp{
+		ID: chirp.ID,
+		Body: chirp.Body,
+	})
 }
