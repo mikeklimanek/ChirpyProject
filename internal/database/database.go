@@ -23,8 +23,8 @@ type Chirp struct {
 }
 
 type User struct {
-	ID    int    `json:"id"`
-	Email string `json:"email"`
+	ID             int    `json:"id"`
+	Email          string `json:"email"`
 	HashedPassword string `json:"hashedPassword"`
 }
 
@@ -171,4 +171,3 @@ func (db *DB) GetUserByEmail(email string) (User, error) {
 
 	return User{}, errors.New("user not found")
 }
-
