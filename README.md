@@ -14,3 +14,4 @@
 13) Docker and GCP setup
 14) Chirps(messages) now have IDs
 15) UserIDs
+16) User signs now requires passwords

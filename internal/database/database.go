@@ -134,7 +134,7 @@ func (db *DB) writeDB(dbStructure DBStructure) error {
 	return nil
 }
 
-func (db *DB) CreateUser(email string) (User, error) {
+func (db *DB) CreateUser(email, hashedPassword string) (User, error) {
 	dbStructure, err := db.loadDB()
 	if err != nil {
 		return User{}, err
@@ -142,8 +142,9 @@ func (db *DB) CreateUser(email string) (User, error) {
 
 	id := len(dbStructure.Users) + 1
 	user := User{
-		ID:    id,
-		Email: email,
+		ID:             id,
+		Email:          email,
+		hashedPassword: hashedPassword,
 	}
 	dbStructure.Users[id] = user
 

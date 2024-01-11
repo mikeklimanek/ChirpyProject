@@ -42,7 +42,7 @@ func (cfg *apiConfig) handlerChirpRetrieveByID(w http.ResponseWriter, r *http.Re
 		return
 	}
 	respondWithJSON(w, http.StatusOK, Chirp{
-		ID: chirp.ID,
+		ID:   chirp.ID,
 		Body: chirp.Body,
 	})
 }

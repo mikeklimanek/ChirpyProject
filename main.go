@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/dthxsu/Chirpy/ChirpyProject/internal/database"
 	"github.com/go-chi/chi/v5"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -14,7 +15,7 @@ type apiConfig struct {
 }
 
 type User struct {
-	ID   int    `json:"id"`
+	ID    int    `json:"id"`
 	Email string `json:"email"`
 }
 
@@ -50,6 +51,7 @@ func main() {
 	apiRouter.Get("/chirps", apiCfg.handlerChirpsRetrieve)
 	apiRouter.Get("/chirps/{id}", apiCfg.handlerChirpRetrieveByID)
 	apiRouter.Post("/users", apiCfg.handlerUsersCreate)
+	apiRouter.Post("/login", apiCfg.handlerLogin)
 	router.Mount("/api", apiRouter)
 
 	adminRouter := chi.NewRouter()
