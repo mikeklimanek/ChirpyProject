@@ -6,6 +6,12 @@ import (
 )
 
 func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Request) {
+	chirpID := chi.URLParam(r, "chirpID")
+	chirp, err := cfg.DB.GetChirp(chirpID)
+	if err != nil {
+		http.Error(w, http.StatusTest(404), 404)
+	}
+
 	dbChirps, err := cfg.DB.GetChirps()
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps")
