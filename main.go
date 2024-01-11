@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/dthxsu/Chirpy/ChirpyProject/internal/database"
 	"github.com/go-chi/chi/v5"
-	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"path/filepath"

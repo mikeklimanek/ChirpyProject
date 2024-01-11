@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
-	"goland.org/x/crypto/bcrypt"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request) {
@@ -20,27 +20,29 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(params.Password), bcrypt.DefaultCost)
+	HashedPassword, err := bcrypt.GenerateFromPassword([]byte(params.Password), bcrypt.DefaultCost)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't hash password")
 		return
 	}
 
-	user, err := cfg.DB.CreateUser(params.Email, string(hashedPassword))
+	user, err := cfg.DB.CreateUser(params.Email, string(HashedPassword))
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't create user")
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, User{
-		ID:    user.ID,
-		Email: user.Email,
-	})
+	userMap := map[string]interface{}{
+		"email": user.Email,
+		"id":    user.ID,
+	}
+
+	respondWithJSON(w, http.StatusCreated, userMap)
 }
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Email    string `json:"email"`
+		Email   string `json:"email"`
 		Password string `json:"password"`
 	}
 
@@ -54,18 +56,19 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 
 	user, err := cfg.DB.GetUserByEmail(params.Email)
 	if err != nil {
-		respondWithError(w, http.StatusNotFound, "Invalid credentials")
+		respondWithError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(params.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(params.Password))
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Invalid credentials")
 		return
 	}
 
 	respondWithJSON(w, http.StatusOK, User{
-		ID:    user.ID,
 		Email: user.Email,
+		ID:   user.ID,
 	})
 }
+
