@@ -1,14 +1,16 @@
 # ChirpyProject
-1) building an http.FileServer function for a simple http.Handler
-2) added a PNG to learn more about Go lang.
+1) building an http.FileServer function with http.Handler
+2) PNG and assests
 3) updated pathing with stripPrefix
 4) added headers
-5) added a visit counter as a metric
+5) visit counter as a metric
 6) reset option for metric
-7) added Chi reroutes
+7) new Chi reroutes
 8) Routing
 9) Architecture
 10) admin metric check
 11) JSON GET/POST logic
 12) Storage
-13) ...
+13) Docker and GCP setup
+14) Chirps(messages) now have IDs
+15) UserIDs
