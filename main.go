@@ -5,10 +5,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 )
 
 type apiConfig struct {
+	JwtSecret      string
 	fileserverHits int
 	DB             *database.DB
 }
@@ -33,7 +35,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	jwtSecret := os.Getenv("JWT_SECRET")
+
 	apiCfg := apiConfig{
+		JwtSecret:      jwtSecret,
 		fileserverHits: 0,
 		DB:             db,
 	}
@@ -46,11 +51,15 @@ func main() {
 	apiRouter := chi.NewRouter()
 	apiRouter.Get("/healthz", handlerReadiness)
 	apiRouter.Get("/reset", apiCfg.handlerReset)
+
+	apiRouter.Post("/login", apiCfg.handlerLogin)
+
+	apiRouter.Post("/users", apiCfg.handlerUsersCreate)
+	apiRouter.Put("/users", apiCfg.handlerUsersUpdate)
+
 	apiRouter.Post("/chirps", apiCfg.handlerChirpsCreate)
 	apiRouter.Get("/chirps", apiCfg.handlerChirpsRetrieve)
 	apiRouter.Get("/chirps/{id}", apiCfg.handlerChirpRetrieveByID)
-	apiRouter.Post("/users", apiCfg.handlerUsersCreate)
-	apiRouter.Post("/login", apiCfg.handlerLogin)
 	router.Mount("/api", apiRouter)
 
 	adminRouter := chi.NewRouter()
