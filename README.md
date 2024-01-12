@@ -15,3 +15,6 @@
 14) Chirps(messages) now have IDs
 15) UserIDs
 16) User signs now requires passwords
+17) implementing JWT for user logins
+18) adding edits to use PUT
+19) bug fixes with JWTs
