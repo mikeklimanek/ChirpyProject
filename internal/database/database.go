@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"sync"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type DB struct {
@@ -27,6 +28,8 @@ type User struct {
 	Email          string `json:"email"`
 	HashedPassword string `json:"hashedPassword"`
 }
+
+var ErrAlreadyExists = errors.New("database: user already exists")
 
 func NewDB(path string) (*DB, error) {
 	db := &DB{
@@ -170,4 +173,33 @@ func (db *DB) GetUserByEmail(email string) (User, error) {
 	}
 
 	return User{}, errors.New("user not found")
+}
+
+func CheckPasswordHash(password, hash string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+}
+
+var ErrNotExist = errors.New("database: user does not exist")
+
+func (db *DB) UpdateUser(id int, email, hashedPassword string) (User, error) {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return User{}, err
+	}
+
+	user, ok := dbStructure.Users[id]
+	if !ok {
+		return User{}, ErrNotExist
+	}
+
+	user.Email = email
+	user.HashedPassword = hashedPassword
+	dbStructure.Users[id] = user
+
+	err = db.writeDB(dbStructure)
+	if err != nil {
+		return User{}, err
+	}
+
+	return user, nil
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/dthxsu/Chirpy/ChirpyProject/internal/database"
 	"github.com/dthxsu/Chirpy/ChirpyProject/internal/auth"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
@@ -30,7 +31,7 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	user, err := cfg.DB.CreateUser(params.Email, HashedPassword)
+	user, err := cfg.DB.CreateUser(params.Email, string(HashedPassword))
 	if err != nil {
 		if errors.Is(err, database.ErrAlreadyExists) {
 			respondWithError(w, http.StatusConflict, "User already exists")
@@ -74,8 +75,8 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = auth.CheckPasswordHash(params.Password, user.HashedPassword)
-	if err != nil {
+	if !auth.CheckPasswordHash(params.Password, user.HashedPassword) {
+		// handle error, for example:
 		respondWithError(w, http.StatusUnauthorized, "Invalid password")
 		return
 	}
@@ -87,7 +88,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		params.ExpiresInSeconds = defaultExpiration
 	}
 
-	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Duration(params.ExpiresInSeconds)*time.Second)
+	token, err := auth.MakeJWT(user.ID, cfg.JwtSecret, time.Duration(params.ExpiresInSeconds)*time.Second)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't create JWT")
 		return
@@ -116,7 +117,7 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, http.StatusUnauthorized, "Couldn't find JWT")
 		return
 	}
-	subject, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	subject, err := auth.ValidateJWT(token, cfg.JwtSecret)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT")
 		return
